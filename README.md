@@ -23,7 +23,20 @@ Package that enables downloading, updating and structuring financial data from t
 # Setup`
 Install using pip in commandline
 
-``` pip install git+git ://github.com/WhiteSpotTrading/igdatacollector ```
+``` pip install git+git://github.com/WhiteSpotTrading/igdatacollector ```
 
+# Use
+In order to be able to use it you must have a file called "trading_ig_config.py" in your project root.
+The file should contain a class declared as below:
 
+~~~~~
+class config(object):
+    username = "IG_MARKETS_USERNAME"
+    password = "IG_MARKETS_PASSWORD"
+    api_key = "IG_MARKETS_API_KEY"
+    acc_type = "DEMO" # LIVE / DEMO
+    acc_number = "IG_MARKETS_ACC_NUM"
+~~~~~
 
+# Acknowledgement
+All api calls performed by the ig_trading lib. Check it out here: https://github.com/ig-python/ig-markets-api-python-library
