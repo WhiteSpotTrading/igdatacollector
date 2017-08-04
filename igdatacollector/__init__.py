@@ -86,7 +86,36 @@ class Timeseries:
             self.last_entry_date = pd.read_csv(self.path, index_col=0).index.values[-1]
             return self.last_entry_date
 
-    def append_data_to_file(self, path):
+    def append_data_to_file(self, path, pickle=False, csv=False):
+        """
+        Appends new data from dataframe to end of existing file
+        :param path:
+        :param pickle:
+        :param csv:
+        :return:
+        """
+        self.path = path
+
+        if not pickle and not csv:
+            raise ValueError('Either pickle or csv must be true.')
+
+        if pickle:
+            base = pd.read_pickle(self.path)
+            cols = base.columns.values
+        else:
+            base = pd.read_csv(self.path, index_col=0)
+            cols = base.columns.values
+        if not (set(cols) == set(self.dataframe.columns.values) and len(cols) == len(self.dataframe.columns.values)):
+            raise IOError('Columns in dataframe do not match file structure.')
+
+        self.dataframe = base.append(self.dataframe)
+
+        if pickle:
+            self.store_as_pickle(self.path)
+        else:
+            self.store_as_csv(self.path)
+
+        return self.dataframe
 
     def pyalgoformatdate(self, price='ask'):
         '''

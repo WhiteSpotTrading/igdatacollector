@@ -23,5 +23,7 @@ Package that enables downloading, updating and structuring financial data from t
 # Setup`
 Install using pip in commandline
 
-``` pip install git+git ://github.com/WhiteSpotTrading/igdatacollector ``
+``` pip install git+git ://github.com/WhiteSpotTrading/igdatacollector ```
+
+
 
