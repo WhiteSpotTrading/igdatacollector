@@ -65,5 +65,6 @@ def flatten_df(df):
     index_list = []
     for i in index:
         index_list.append(cleanDate(i))
-
-    return pd.DataFrame(data=rows, index=index_list, columns=columns)
+    df = pd.DataFrame(data=rows, index=index_list, columns=columns)
+    df.index.name = 'DateTime'
+    return df

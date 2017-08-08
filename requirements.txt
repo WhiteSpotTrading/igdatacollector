@@ -1,3 +1,4 @@
 pandas
 numpy
 trading_ig
+sqlalchemy

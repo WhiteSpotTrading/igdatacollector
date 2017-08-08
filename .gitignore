@@ -100,3 +100,4 @@ ENV/
 # mypy
 .mypy_cache/
 .idea/
+/trading_ig_config.py
