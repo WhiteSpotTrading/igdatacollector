@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(name='igdatacollector',
-      version='0.1',
+      version='0.2',
       description='Simple package that enables easy download, update\
                     and formatting of financialdata from IG markets API.',
       url='https://github.com/WhiteSpotTrading/igdatacollector',
