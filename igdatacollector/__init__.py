@@ -1,13 +1,12 @@
 from trading_ig import IGService
 from trading_ig.config import config
-from utils import flatten_df, cleanDates
+from utils import flatten_df, cleanDates, return_datetime
 import pandas as pd
-
 
 
 class Timeseries:
 
-    def __init__(self, epic, resolution, file_path=None, last_updates=None, path=None, start_date=None, end_date=None):
+    def __init__(self, epic, resolution, file_path=None, last_updates=None, path=None, table=None, start_date=None, end_date=None):
         '''
 
         :param epic: IG Markets Epic
@@ -23,6 +22,7 @@ class Timeseries:
         self.file_path = file_path
         self.last_updates = last_updates
         self.path = path
+        self.table = table
         self.start_date = start_date
         self.end_date = end_date
         self.ig_reponse = None
@@ -46,21 +46,19 @@ class Timeseries:
         self.sort_df()
         return self.dataframe
 
-    def getTimesseries_from_file(self, path, pickle=False, csv=False):
+    def getTimeseries_from_file(self, path, file_type):
         """
-        Gets data from file and puts in dataframe
+        Gets data from file and returns Dataframe
         :param path:
-        :param pickle:
-        :param csv:
+        :param file_type:
         :return:
         """
         self.path = path
-        if not pickle and not csv:
+        if not file_type or file_type.lower() not in ['csv', 'pickle']:
             raise ValueError('Either pickle or csv must be true.')
-        if pickle:
+        elif file_type=='pickle':
             temp_dataframe = pd.read_pickle(self.path)
-
-        if csv:
+        else:
             temp_dataframe = pd.read_csv(self.path, index_col=0)
         self.dataframe = cleanDates(temp_dataframe.reset_index())
         self.dataframe.set_index(['DateTime'], inplace=True)
@@ -89,86 +87,98 @@ class Timeseries:
         self.sort_df()
         return self.dataframe
 
-    def store_as_csv(self, path):
+    def store_to_file(self, file_type, path):
         """
-        Stores self.dataframe as csv file at supplied path
+        Stores Dataframe to file at given path
+        :param file_type:
         :param path:
         :return:
         """
-
-        self.path = path
         if not isinstance(self.dataframe, pd.DataFrame):
             raise ValueError('dataframe argument is not a Pandas.DataFrame')
-        self.sort_df()
-        self.dataframe.to_csv(path_or_buf=path)
-        return self.path
-
-    def store_as_pickle(self, path):
-        """
-            Stores self.dataframe as pickle file at supplied path
-            :param path:
-            :return:
-        """
+        elif file_type.lower() not in ['csv', 'pickle']:
+            raise ValueError('File_type arg must be either pickle or csv.')
+        elif file_type.lower() == 'pickle':
+            self.sort_df()
+            self.dataframe.to_pickle(path=path)
+        else:
+            self.sort_df()
+            self.dataframe.to_csv(path_or_buf=path)
         self.path = path
-        if not isinstance(self.dataframe, pd.DataFrame):
-            raise ValueError('dataframe argument is not a Pandas.DataFrame')
-        self.sort_df()
-        self.dataframe.to_pickle(path=self.path)
         return self.path
 
     def store_to_psql(self, engine, name=None, if_exists='fail'):
-        self.sort_df()
-        if not name:
-            name = self.epic+'_'+self.resolution
-        self.dataframe.to_sql(name=name, con=engine, if_exists=if_exists)
-
-
-    def get_last_update_from_file(self, path, pickle=False, csv=False):
         """
-        Opens file at path and gets datetime for last entry
-        :param path:
-        :param pickle:
-        :param csv:
+        Stores Dataframe to sql and returns table name
+        :param engine:
+        :param name: table name, optional, default epic + resolution
+        :param if_exists:
         :return:
         """
-        self.path = path
-        if not pickle and not csv:
-            raise ValueError('Either pickle or csv must be true.')
-        if pickle:
-            df = pd.read_pickle(self.path)
+        self.sort_df()
+        self.table_name(name=name)
+        self.dataframe.to_sql(name=self.table, con=engine, if_exists=if_exists)
+        return self.table
+
+    def get_last_update(self, engine=None, name=None, file_type=None, path=None):
+        """
+        Gets last update for given epic from sql, pickle or csv
+        :param engine:
+        :param name:
+        :param file_type:
+        :param path:
+        :return:
+        """
+        if engine==None and file_type == None:
+            return self.last_entry_date
+        elif engine:
+            self.table_name(name=name)
+            df = pd.read_sql_table(table_name=self.table, con=engine,
+                                   parse_dates='DateTime', index_col='DateTime')
         else:
-            df = pd.read_csv(self.path, index_col=0)
-        self.last_entry_date = df.sort_index().index.values[-1]
+            if file_type.lower() not in ['pickle', 'csv']:
+                raise ValueError('Incorrect file_type input, must be pickle or csv.')
+            elif file_type.lower()=='pickle':
+                df = pd.read_pickle(path=path)
+            else:
+                df = pd.read_csv(path, index_col=0)
+
+        self.last_entry_date = return_datetime(df.sort_index().index.values[-1])
         return self.last_entry_date
 
-    def append_data_to_file(self, path, pickle=False, csv=False):
+    def append_data(self, engine=None, name=None, file_type=None, path=None):
         """
-        Appends new data from dataframe to end of existing file
+        Appends data to end of sql table, pickled DF or csv
+        :param engine:
+        :param name:
+        :param file_type:
         :param path:
-        :param pickle:
-        :param csv:
         :return:
         """
-        self.path = path
-
-        if not pickle and not csv:
-            raise ValueError('Either pickle or csv must be true.')
-
-        if pickle:
-            base = pd.read_pickle(self.path)
-            cols = base.columns.values
+        if engine == None and file_type == None:
+            raise ValueError('Neither file_type nor engine given.')
+        elif engine:
+            if not name:
+                name = self.epic
+            self.dataframe.to_sql(name=name, con=engine, if_exists='append')
+            self.getTimeseries_from_sql(engine=engine, name=name)
         else:
-            base = pd.read_csv(self.path, index_col=0)
-            cols = base.columns.values
-        if not (set(cols) == set(self.dataframe.columns.values) and len(cols) == len(self.dataframe.columns.values)):
-            raise IOError('Columns in dataframe do not match file structure.')
+            if file_type.lower() == 'pickle':
+                base = pd.read_pickle(path)
+                cols = base.columns.values
+            elif file_type.lower() == 'csv':
+                base = pd.read_csv(path, index_col=0)
+                cols = base.columns.values
+            else:
+                raise ValueError('Incorrect file_type input, must be pickle or csv.')
 
-        self.dataframe = base.append(self.dataframe)
+            if not (set(cols) == set(self.dataframe.columns.values) and len(cols) == len(self.dataframe.columns.values)):
+                raise IOError('Columns in dataframe do not match file structure.')
+            else:
+                self.dataframe = base.append(self.dataframe)
 
-        if pickle:
-            self.store_as_pickle(self.path)
-        else:
-            self.store_as_csv(self.path)
+                self.store_to_file(file_type=file_type, path=path)
+                self.getTimeseries_from_file(file_type=file_type, path=path)
 
         return self.dataframe
 
@@ -191,5 +201,9 @@ class Timeseries:
     def sort_df(self, ascending=True):
         self.dataframe.sort_index(ascending=ascending, inplace=True)
 
-
+    def table_name(self, name=None):
+        if name:
+            self.table = name
+        elif not self.table:
+            self.table = self.epic+'_'+self.resolution
 

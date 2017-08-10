@@ -1,5 +1,8 @@
 import pandas as pd
 import numpy as np
+from datetime import datetime
+import numpy as np
+import types
 
 def cleanDates(df):
     """
@@ -19,7 +22,6 @@ def cleanDates(df):
                                     yearfirst=True)
     return df
 
-
 def cleanDate(ig_date_str):
 
     return str(ig_date_str[0:4]+'-'+\
@@ -28,7 +30,6 @@ def cleanDate(ig_date_str):
                ig_date_str[11:13]+':'+\
                ig_date_str[14:16]+':'+\
                ig_date_str[17:])
-
 
 def get_df_from_raw(path):
     df = pd.read_csv(filepath_or_buffer=path, header=[0, 1, 2])
@@ -68,3 +69,16 @@ def flatten_df(df):
     df = pd.DataFrame(data=rows, index=index_list, columns=columns)
     df.index.name = 'DateTime'
     return df
+
+
+def return_datetime(date_time):
+    if np.issubdtype(type(date_time), np.datetime64):
+        ts = (date_time - np.datetime64('1970-01-01T00:00:00Z')) / np.timedelta64(1, 's')
+        return datetime.fromtimestamp(ts)
+    if not isinstance(date_time, datetime) and isinstance(date_time, types.StringType):
+        return datetime.strptime(date_time,'%Y-%m-%d %H:%M:%S')
+    else:
+        return date_time
+
+def num_trading_days(start, end):
+    return np.busday_count(start, end) + 1

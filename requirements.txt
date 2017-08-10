@@ -2,3 +2,4 @@ pandas
 numpy
 trading_ig
 sqlalchemy
+pysqlite3
